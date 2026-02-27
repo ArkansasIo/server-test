@@ -34,3 +34,26 @@ jobs:
               Stop-Process -Id $proc.Id -Force
             }
           }
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential libsqlite3-dev
+
+      - name: Configure
+        run: cmake -S . -B build -DUSE_BUNDLED_SQLITE=ON
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Smoke test
+        run: |
+          timeout 3 ./build/c_fullstack_server --db-config ./server/db.conf --port 8091 &
+          sleep 1
+          curl http://localhost:8091/api/health || exit 1
