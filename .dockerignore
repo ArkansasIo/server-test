@@ -1,0 +1,16 @@
+.git
+.github
+.gitignore
+.editorconfig
+CONTRIBUTING.md
+LICENSE
+README.md
+docker-compose.yml
+Dockerfile
+build/
+data/
+excel/
+*.zip
+.DS_Store
+*.o
+*.obj
