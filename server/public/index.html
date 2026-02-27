@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>C Full-Stack Template</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; line-height: 1.4; }
+    .row { display: flex; gap: 16px; flex-wrap: wrap; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 16px; min-width: 280px; flex: 1; }
+    button { padding: 8px 12px; border-radius: 8px; border: 1px solid #999; background: #f7f7f7; cursor: pointer; }
+    input, textarea { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #ccc; }
+    pre { background: #111; color: #eee; padding: 12px; border-radius: 10px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <h1>C Full-Stack Template</h1>
+  <p>
+    This page is served by the same C binary as the REST API.
+    Open <code>/api/health</code> or use the UI below.
+  </p>
+
+  <div class="row">
+    <div class="card">
+      <h2>Health</h2>
+      <button id="btnHealth">GET /api/health</button>
+      <pre id="outHealth"></pre>
+    </div>
+
+    <div class="card">
+      <h2>Items</h2>
+      <button id="btnList">GET /api/items</button>
+      <pre id="outList"></pre>
+      <hr />
+      <h3>Create Item</h3>
+      <label>user_id</label>
+      <input id="userId" value="1" />
+      <label>title</label>
+      <input id="title" value="New Item" />
+      <label>body</label>
+      <textarea id="body" rows="3">Hello from the browser client.</textarea>
+      <button id="btnCreate">POST /api/items</button>
+      <pre id="outCreate"></pre>
+    </div>
+  </div>
+
+<script>
+async function api(path, opts) {
+  const r = await fetch(path, Object.assign({
+    headers: { "Content-Type": "application/json" }
+  }, opts || {}));
+  const t = await r.text();
+  return { status: r.status, text: t };
+}
+const $ = (id)=>document.getElementById(id);
+
+$("btnHealth").onclick = async () => {
+  const res = await api("/api/health");
+  $("outHealth").textContent = res.text;
+};
+
+$("btnList").onclick = async () => {
+  const res = await api("/api/items");
+  $("outList").textContent = res.text;
+};
+
+$("btnCreate").onclick = async () => {
+  const payload = {
+    user_id: Number($("userId").value),
+    title: $("title").value,
+    body: $("body").value
+  };
+  const res = await api("/api/items", { method: "POST", body: JSON.stringify(payload) });
+  $("outCreate").textContent = res.text;
+};
+</script>
+</body>
+</html>
