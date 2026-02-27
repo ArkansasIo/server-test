@@ -3,7 +3,7 @@
 
 int main(void) {
   api_client_t c;
-  api_client_init(&c, "127.0.0.1", 8080);
+  api_client_init(&c, "127.0.0.1", 8090);
 
   char buf[8192];
 
