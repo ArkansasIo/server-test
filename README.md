@@ -13,6 +13,13 @@ This repo is a **single package** that includes:
 - A C compiler (clang or gcc)
 - SQLite3 dev library (optional; bundled SQLite is used by default)
 
+## Quick start (Docker)
+
+```bash
+docker-compose up
+# then open http://localhost:8080
+```
+
 ## Build
 
 ```bash
