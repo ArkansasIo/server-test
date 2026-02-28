@@ -1,4 +1,4 @@
-# C Full-Stack Package (SQLite + REST API + Static Front-End + C Client SDK)
+# C Full-Stack Package (SQLite + REST API + Static Front-End + C Client SDK + Interactive CLI)
 
 This repo is a **single package** that includes:
 
@@ -6,6 +6,30 @@ This repo is a **single package** that includes:
 - **Backend API server** written in **C** (REST-ish JSON endpoints)
 - **Front-end app** (HTML/JS) served by the same C server binary
 - **Front-end client API package**: a small **C client library** (`client_c`) + example
+- **Interactive CLI menu client** - Complete user interface with authentication, item management, and settings
+
+## Quick Start - Menu Client
+
+Experience the full C fullstack with our interactive CLI interface:
+
+### Windows
+```bash
+cd fullstack_c_package
+./run-menu-client.bat
+```
+
+### Linux/macOS
+```bash
+cd fullstack_c_package
+chmod +x run-menu-client.sh
+./run-menu-client.sh
+```
+
+**Demo Credentials:**
+- Email: `admin@example.com` | Password: `password`
+- Email: `player@example.com` | Password: `password`
+
+For full menu client documentation, see [MENU_CLIENT.md](MENU_CLIENT.md), [UI_FEATURES.md](UI_FEATURES.md), and [UI_MOCKUP.md](UI_MOCKUP.md).
 
 ## Requirements
 
@@ -96,6 +120,13 @@ Related CLI flags:
 
 ## API
 
+**Authentication**
+- `POST /api/auth/login` - Authenticate with email/password
+- `POST /api/auth/register` - Create new user account
+- `GET /api/users` - List all users
+- `GET /api/users/:id` - Get user details
+
+**Items**
 - `GET /api/health` -> JSON
 - `GET /api/items` -> JSON list (max 100)
 - `POST /api/items` body:
