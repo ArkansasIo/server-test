@@ -44,7 +44,12 @@ add_executable(client_example client_c/src/example.c)
 target_link_libraries(client_example PRIVATE c_fullstack_client)
 target_include_directories(client_example PRIVATE client_c/include)
 
+add_executable(menu_client client_c/src/menu_client.c)
+target_link_libraries(menu_client PRIVATE c_fullstack_client)
+target_include_directories(menu_client PRIVATE client_c/include)
+
 if (WIN32)
   target_link_libraries(c_fullstack_server PRIVATE ws2_32)
   target_link_libraries(client_example PRIVATE ws2_32)
+  target_link_libraries(menu_client PRIVATE ws2_32)
 endif()

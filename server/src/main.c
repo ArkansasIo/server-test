@@ -227,6 +227,126 @@ static void route_api(app_db_t *adb, const http_request_t *req, http_response_t 
     return;
   }
 
+  /* Authentication endpoints */
+  if (strcmp(req->path, "/api/auth/login") == 0) {
+    if (strcmp(req->method, "POST") != 0) { res->status = 405; http_set_body_cstr(res, "application/json; charset=utf-8", "{ \"error\": \"method_not_allowed\" }"); return; }
+    
+    char email[256] = {0};
+    char password[256] = {0};
+    
+    /* Simple JSON parsing - extract email and password fields */
+    const char *email_start = strstr(req->body, "\"email\":");
+    const char *pass_start = strstr(req->body, "\"password\":");
+    
+    if (email_start && pass_start) {
+      const char *p = strchr(email_start, '"');
+      if (p) {
+        p++;
+        int i = 0;
+        while (*p && *p != '"' && i < (int)sizeof(email) - 1) {
+          email[i++] = *p++;
+        }
+        email[i] = '\0';
+      }
+      
+      p = strchr(pass_start, '"');
+      if (p) {
+        p++;
+        int i = 0;
+        while (*p && *p != '"' && i < (int)sizeof(password) - 1) {
+          password[i++] = *p++;
+        }
+        password[i] = '\0';
+      }
+    }
+    
+    char *j = NULL;
+    if (db_login(adb, email, password, &j) != 0 || !j) { 
+      res->status = 401; 
+      http_set_body_cstr(res, "application/json; charset=utf-8", "{ \"ok\": false, \"error\": \"Unauthorized\" }"); 
+      return; 
+    }
+    res->status = 200;
+    http_set_body_cstr(res, "application/json; charset=utf-8", j);
+    free(j);
+    return;
+  }
+
+  if (strcmp(req->path, "/api/auth/register") == 0) {
+    if (strcmp(req->method, "POST") != 0) { res->status = 405; http_set_body_cstr(res, "application/json; charset=utf-8", "{ \"error\": \"method_not_allowed\" }"); return; }
+    
+    char email[256] = {0};
+    char password[256] = {0};
+    char display_name[256] = {0};
+    
+    /* Simple JSON parsing */
+    const char *p = NULL;
+    
+    p = strstr(req->body, "\"email\":");
+    if (p) {
+      p = strchr(p, '"');
+      if (p) {
+        p++;
+        int i = 0;
+        while (*p && *p != '"' && i < (int)sizeof(email) - 1) {
+          email[i++] = *p++;
+        }
+        email[i] = '\0';
+      }
+    }
+    
+    p = strstr(req->body, "\"password\":");
+    if (p) {
+      p = strchr(p, '"');
+      if (p) {
+        p++;
+        int i = 0;
+        while (*p && *p != '"' && i < (int)sizeof(password) - 1) {
+          password[i++] = *p++;
+        }
+        password[i] = '\0';
+      }
+    }
+    
+    p = strstr(req->body, "\"display_name\":");
+    if (p) {
+      p = strchr(p, '"');
+      if (p) {
+        p++;
+        int i = 0;
+        while (*p && *p != '"' && i < (int)sizeof(display_name) - 1) {
+          display_name[i++] = *p++;
+        }
+        display_name[i] = '\0';
+      }
+    }
+    
+    char *j = NULL;
+    if (db_register(adb, email, password, display_name, &j) != 0 || !j) {
+      res->status = 400;
+      http_set_body_cstr(res, "application/json; charset=utf-8", "{ \"ok\": false, \"error\": \"Registration failed\" }");
+      return;
+    }
+    res->status = 201;
+    http_set_body_cstr(res, "application/json; charset=utf-8", j);
+    free(j);
+    return;
+  }
+
+  if (strcmp(req->path, "/api/users") == 0) {
+    if (strcmp(req->method, "GET") == 0) {
+      char *j = NULL;
+      if (db_list_users(adb, &j) != 0 || !j) { res->status = 500; http_set_body_cstr(res, "application/json; charset=utf-8", "{ \"error\": \"db\" }"); return; }
+      res->status = 200;
+      http_set_body(res, "application/json; charset=utf-8", j, strlen(j));
+      free(j);
+      return;
+    }
+    res->status = 405;
+    http_set_body_cstr(res, "application/json; charset=utf-8", "{ \"error\": \"method_not_allowed\" }");
+    return;
+  }
+
   res->status = 404;
   http_set_body_cstr(res, "application/json; charset=utf-8", "{ \"error\": \"not_found\" }");
 }

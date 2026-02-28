@@ -244,3 +244,184 @@ int db_create_item(app_db_t *adb, const char *json_body, char **out_json) {
   *out_json = strdup(resp);
   return *out_json ? 0 : -1;
 }
+
+int db_login(app_db_t *adb, const char *email, const char *password_hash, char **out_json) {
+  if (!email || !password_hash) return -1;
+
+  const char *sql = "SELECT id, display_name, role FROM users WHERE email = ? AND password_hash = ?;";
+  sqlite3_stmt *st = NULL;
+  if (sqlite3_prepare_v2(adb->db, sql, -1, &st, NULL) != SQLITE_OK) return -1;
+
+  sqlite3_bind_text(st, 1, email, -1, SQLITE_TRANSIENT);
+  sqlite3_bind_text(st, 2, password_hash, -1, SQLITE_TRANSIENT);
+
+  if (sqlite3_step(st) != SQLITE_ROW) {
+    sqlite3_finalize(st);
+    *out_json = strdup("{ \"ok\": false, \"error\": \"Invalid credentials\" }");
+    return -1;
+  }
+
+  int user_id = sqlite3_column_int(st, 0);
+  const char *display_name = (const char*)sqlite3_column_text(st, 1);
+  const char *role = (const char*)sqlite3_column_text(st, 2);
+
+  char *j_name = json_escape(display_name);
+  char *j_email = json_escape(email);
+  char *j_role = json_escape(role);
+
+  if (!j_name || !j_email || !j_role) {
+    free(j_name); free(j_email); free(j_role);
+    sqlite3_finalize(st);
+    return -1;
+  }
+
+  char resp[512];
+  snprintf(resp, sizeof(resp),
+    "{ \"ok\": true, \"user_id\": %d, \"email\": %s, \"display_name\": %s, \"role\": %s, \"token\": \"demo_token_%d\" }",
+    user_id, j_email, j_name, j_role, user_id);
+
+  free(j_name); free(j_email); free(j_role);
+  sqlite3_finalize(st);
+
+  *out_json = strdup(resp);
+  return *out_json ? 0 : -1;
+}
+
+int db_register(app_db_t *adb, const char *email, const char *password_hash, const char *display_name, char **out_json) {
+  if (!email || !password_hash || !display_name) return -1;
+
+  /* Check if email already exists */
+  const char *check_sql = "SELECT id FROM users WHERE email = ?;";
+  sqlite3_stmt *st_check = NULL;
+  if (sqlite3_prepare_v2(adb->db, check_sql, -1, &st_check, NULL) != SQLITE_OK) return -1;
+  
+  sqlite3_bind_text(st_check, 1, email, -1, SQLITE_TRANSIENT);
+  int exists = (sqlite3_step(st_check) == SQLITE_ROW);
+  sqlite3_finalize(st_check);
+
+  if (exists) {
+    *out_json = strdup("{ \"ok\": false, \"error\": \"Email already registered\" }");
+    return -1;
+  }
+
+  const char *sql = "INSERT INTO users (email, password_hash, display_name, role) VALUES (?, ?, ?, 'user');";
+  sqlite3_stmt *st = NULL;
+  if (sqlite3_prepare_v2(adb->db, sql, -1, &st, NULL) != SQLITE_OK) return -1;
+
+  sqlite3_bind_text(st, 1, email, -1, SQLITE_TRANSIENT);
+  sqlite3_bind_text(st, 2, password_hash, -1, SQLITE_TRANSIENT);
+  sqlite3_bind_text(st, 3, display_name, -1, SQLITE_TRANSIENT);
+
+  if (sqlite3_step(st) != SQLITE_DONE) {
+    sqlite3_finalize(st);
+    *out_json = strdup("{ \"ok\": false, \"error\": \"Registration failed\" }");
+    return -1;
+  }
+
+  long long new_id = sqlite3_last_insert_rowid(adb->db);
+  sqlite3_finalize(st);
+
+  char resp[512];
+  snprintf(resp, sizeof(resp),
+    "{ \"ok\": true, \"user_id\": %lld, \"email\": \"%s\", \"display_name\": \"%s\", \"message\": \"Registration successful\" }",
+    new_id, email, display_name);
+
+  *out_json = strdup(resp);
+  return *out_json ? 0 : -1;
+}
+
+int db_get_user(app_db_t *adb, int user_id, char **out_json) {
+  const char *sql = "SELECT id, email, display_name, role, created_at, last_login FROM users WHERE id = ?;";
+  sqlite3_stmt *st = NULL;
+  if (sqlite3_prepare_v2(adb->db, sql, -1, &st, NULL) != SQLITE_OK) return -1;
+
+  sqlite3_bind_int(st, 1, user_id);
+
+  if (sqlite3_step(st) != SQLITE_ROW) {
+    sqlite3_finalize(st);
+    *out_json = strdup("{ \"ok\": false, \"error\": \"User not found\" }");
+    return -1;
+  }
+
+  int id = sqlite3_column_int(st, 0);
+  const char *email = (const char*)sqlite3_column_text(st, 1);
+  const char *display_name = (const char*)sqlite3_column_text(st, 2);
+  const char *role = (const char*)sqlite3_column_text(st, 3);
+  const char *created_at = (const char*)sqlite3_column_text(st, 4);
+  const char *last_login = (const char*)sqlite3_column_text(st, 5);
+
+  char *j_email = json_escape(email);
+  char *j_name = json_escape(display_name);
+  char *j_role = json_escape(role);
+  char *j_created = json_escape(created_at);
+  char *j_login = json_escape(last_login);
+
+  if (!j_email || !j_name || !j_role || !j_created || !j_login) {
+    free(j_email); free(j_name); free(j_role); free(j_created); free(j_login);
+    sqlite3_finalize(st);
+    return -1;
+  }
+
+  char resp[1024];
+  snprintf(resp, sizeof(resp),
+    "{ \"ok\": true, \"id\": %d, \"email\": %s, \"display_name\": %s, \"role\": %s, \"created_at\": %s, \"last_login\": %s }",
+    id, j_email, j_name, j_role, j_created, j_login);
+
+  free(j_email); free(j_name); free(j_role); free(j_created); free(j_login);
+  sqlite3_finalize(st);
+
+  *out_json = strdup(resp);
+  return *out_json ? 0 : -1;
+}
+
+int db_list_users(app_db_t *adb, char **out_json) {
+  const char *sql = "SELECT id, email, display_name, role, created_at FROM users ORDER BY id;";
+  sqlite3_stmt *st = NULL;
+  if (sqlite3_prepare_v2(adb->db, sql, -1, &st, NULL) != SQLITE_OK) return -1;
+
+  size_t cap = 4096;
+  char *buf = (char*)malloc(cap);
+  if (!buf) { sqlite3_finalize(st); return -1; }
+  size_t n = 0;
+
+  n += (size_t)snprintf(buf + n, cap - n, "{ \"users\": [");
+  int first = 1;
+  while (sqlite3_step(st) == SQLITE_ROW) {
+    int id = sqlite3_column_int(st, 0);
+    const char *email = (const char*)sqlite3_column_text(st, 1);
+    const char *display_name = (const char*)sqlite3_column_text(st, 2);
+    const char *role = (const char*)sqlite3_column_text(st, 3);
+    const char *created_at = (const char*)sqlite3_column_text(st, 4);
+
+    char *j_email = json_escape(email);
+    char *j_name = json_escape(display_name);
+    char *j_role = json_escape(role);
+    char *j_ca = json_escape(created_at);
+
+    if (!j_email || !j_name || !j_role || !j_ca) {
+      free(buf); sqlite3_finalize(st); return -1;
+    }
+
+    char row[1024];
+    int rn = snprintf(row, sizeof(row),
+      "%s{ \"id\": %d, \"email\": %s, \"display_name\": %s, \"role\": %s, \"created_at\": %s }",
+      first ? "" : ",", id, j_email, j_name, j_role, j_ca);
+    first = 0;
+
+    if (n + (size_t)rn + 64 > cap) {
+      cap *= 2;
+      buf = (char*)realloc(buf, cap);
+      if (!buf) { sqlite3_finalize(st); return -1; }
+    }
+    memcpy(buf + n, row, (size_t)rn);
+    n += (size_t)rn;
+
+    free(j_email); free(j_name); free(j_role); free(j_ca);
+  }
+
+  sqlite3_finalize(st);
+  if (n + 32 > cap) { cap += 64; buf = (char*)realloc(buf, cap); if (!buf) return -1; }
+  n += (size_t)snprintf(buf + n, cap - n, "] }");
+  *out_json = buf;
+  return 0;
+}

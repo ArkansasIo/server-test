@@ -4,8 +4,20 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS users (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   email         TEXT    NOT NULL UNIQUE,
+  password_hash TEXT    NOT NULL,
   display_name  TEXT    NOT NULL,
-  created_at    TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  role          TEXT    NOT NULL DEFAULT 'user',
+  created_at    TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  last_login    TEXT
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id       INTEGER NOT NULL,
+  token         TEXT    NOT NULL UNIQUE,
+  expires_at    TEXT    NOT NULL,
+  created_at    TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS items (
